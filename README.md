@@ -1,6 +1,16 @@
 # Alarm System 🔔
 
-Una herramienta completa de gestión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
+Una herramienta complet### Instalación rápida con una línea 🚀
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash
+```
+
+> **💡 Tip:** Este comando descarga y ejecuta automáticamente el instalador, detecta tu sistema operativo, instala todas las dependencias y configura la herramienta. ¡Listo en segundos!
+
+> **🔒 Seguridad:** Si prefieres revisar el código antes de ejecutar, puedes ver el script de instalación [aquí](https://github.com/FrancoCastro1990/alarm.sh/blob/main/install.sh) o usar la instalación manual.
+
+### Instalación automática (Alternativa) 📥stión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
 
 ## Características
 
@@ -40,23 +50,59 @@ sudo pacman -S libnotify pulseaudio alsa-utils
 
 ## Instalación
 
+### Instalación rápida con una línea 🚀
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash
+```
+
+### Instalación automática (Alternativa) �
+
+1. **Clona el repositorio:**
+```bash
+git clone https://github.com/FrancoCastro1990/alarm.sh.git
+cd alarm.sh
+```
+
+2. **Ejecuta el script de instalación:**
+```bash
+./install.sh
+```
+
+El script de instalación automáticamente:
+- ✅ Detecta tu distribución Linux (Ubuntu, Debian, Fedora, Arch, etc.)
+- ✅ Instala todas las dependencias necesarias
+- ✅ Configura y verifica el servicio cron
+- ✅ Hace el script ejecutable
+- ✅ Opcionalmente instala el comando globalmente
+- ✅ Verifica que todo funcione correctamente
+
+### Instalación manual
+
+Si prefieres instalar manualmente o el script automático no funciona en tu sistema:
+
 1. **Clona o descarga el script:**
 ```bash
 git clone https://github.com/FrancoCastro1990/alarm.sh.git
-cd alarm
+cd alarm.sh
 ```
 
-2. **Haz el script ejecutable:**
+2. **Instala las dependencias según tu distribución:**
+   - **Ubuntu/Debian:** `sudo apt update && sudo apt install libnotify-bin pulseaudio-utils alsa-utils`
+   - **Fedora/RHEL:** `sudo dnf install libnotify pulseaudio-utils alsa-utils`
+   - **Arch Linux:** `sudo pacman -S libnotify pulseaudio alsa-utils`
+
+3. **Haz el script ejecutable:**
 ```bash
 chmod +x alarm.sh
 ```
 
-3. **Opcionalmente, mueve el script a tu PATH para usarlo globalmente:**
+4. **Opcionalmente, instala globalmente:**
 ```bash
 sudo cp alarm.sh /usr/local/bin/alarm
 ```
 
-4. **Verifica que cron esté ejecutándose:**
+5. **Verifica que cron esté ejecutándose:**
 ```bash
 sudo systemctl status cron
 # o en sistemas con systemd:
