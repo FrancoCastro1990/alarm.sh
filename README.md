@@ -42,7 +42,7 @@ sudo pacman -S libnotify pulseaudio alsa-utils
 
 1. **Clona o descarga el script:**
 ```bash
-git clone <tu-repositorio>
+git clone https://github.com/FrancoCastro1990/alarm.sh.git
 cd alarm
 ```
 
