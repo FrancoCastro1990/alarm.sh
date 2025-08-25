@@ -1,16 +1,6 @@
 # Alarm System 🔔
 
-Una herramienta complet### Instalación rápida con una línea 🚀
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash
-```
-
-> **💡 Tip:** Este comando descarga y ejecuta automáticamente el instalador, detecta tu sistema operativo, instala todas las dependencias y configura la herramienta. ¡Listo en segundos!
-
-> **🔒 Seguridad:** Si prefieres revisar el código antes de ejecutar, puedes ver el script de instalación [aquí](https://github.com/FrancoCastro1990/alarm.sh/blob/main/install.sh) o usar la instalación manual.
-
-### Instalación automática (Alternativa) 📥stión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
+Una herramienta completa de gestión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
 
 ## Características
 
@@ -53,10 +43,14 @@ sudo pacman -S libnotify pulseaudio alsa-utils
 ### Instalación rápida con una línea 🚀
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/install.sh | bash
 ```
 
-### Instalación automática (Alternativa) �
+> **💡 Tip:** Este comando descarga y ejecuta automáticamente el instalador, detecta tu sistema operativo, instala todas las dependencias y configura la herramienta. ¡Listo en segundos!
+
+> **🔒 Seguridad:** Si prefieres revisar el código antes de ejecutar, puedes ver el script de instalación [aquí](https://github.com/FrancoCastro1990/alarm.sh/blob/main/install.sh) o usar la instalación manual.
+
+### Instalación automática (Alternativa) 📥
 
 1. **Clona el repositorio:**
 ```bash

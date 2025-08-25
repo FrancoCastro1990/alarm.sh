@@ -166,9 +166,9 @@ download_alarm_script() {
         print_info "Descargando alarm.sh desde GitHub..."
         
         if command_exists "curl"; then
-            curl -fsSL -o alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/alarm.sh
+            curl -fsSL -o alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/alarm.sh
         elif command_exists "wget"; then
-            wget -q -O alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/alarm.sh
+            wget -q -O alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/alarm.sh
         else
             print_error "Se requiere curl o wget para descargar el script"
             print_info "Por favor instala curl: sudo apt install curl (Ubuntu/Debian)"
@@ -198,7 +198,7 @@ setup_script() {
     if [[ ! -f "alarm.sh" ]]; then
         print_error "No se encontró el archivo alarm.sh"
         print_info "Asegúrate de ejecutar este script desde el directorio que contiene alarm.sh"
-        print_info "O usa la instalación con curl: curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash"
+        print_info "O usa la instalación con curl: curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/install.sh | bash"
         return 1
     fi
     
@@ -279,7 +279,7 @@ show_usage_examples() {
     print_info "Para más ejemplos, consulta: https://github.com/FrancoCastro1990/alarm.sh#readme"
     echo
     print_info "💡 Comparte este instalador:"
-    echo "   curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/main/install.sh | bash"
+    echo "   curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/install.sh | bash"
 }
 
 # Función principal
