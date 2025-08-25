@@ -476,7 +476,74 @@ if [[ "$TEMPO_MODE" == "true" ]]; then
   if [[ "$TIME" =~ ^([0-9]+):([0-9]+)$ ]]; then
     MINUTES=${BASH_REMATCH[1]}
     SECONDS=${BASH_REMATCH[2]}
-    TARGET_TIME=$((NOW + MINUTES * 60 + SECONDS))
+    TOTAL_SECONDS=$((MINUTES * 60 + SECONDS))
+    
+    # For short durations (less than 1 minute), use sleep for precision
+    # For longer durations, use cron (seconds will be ignored)
+    if [[ $TOTAL_SECONDS -lt 60 ]]; then
+      # Direct execution with sleep - no cron needed
+      echo -e "\e[32m✓ Alarm set for:\e[0m $MINUTES:$(printf "%02d" $SECONDS) from now - \"$MESSAGE\""
+      
+      # Fork a background process to handle the alarm
+      (
+        sleep $TOTAL_SECONDS
+        
+        # Set up environment for GUI applications
+        export DISPLAY=:0
+        
+        # Try to find the user's D-Bus session
+        if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]; then
+          dbus_pid=$(pgrep -u "$USER" dbus-daemon | head -1)
+          if [[ -n "$dbus_pid" ]]; then
+            export DBUS_SESSION_BUS_ADDRESS=$(tr '\0' '\n' < /proc/$dbus_pid/environ | grep DBUS_SESSION_BUS_ADDRESS | cut -d= -f2-)
+          fi
+        fi
+        
+        # Show notification
+        notify-send "⏰ Alarm" "$MESSAGE" 2>/dev/null
+        
+        # Play sound if not disabled
+        if [[ -z "$NO_SOUND" ]]; then
+          # Set up audio environment
+          export PULSE_SERVER=unix:/run/user/$UID/pulse/native
+          
+          # Try different sound files in order of preference
+          sound_files=(
+            "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+            "/usr/share/sounds/alsa/Front_Left.wav"
+            "/usr/share/sounds/sound-icons/prompt.wav"
+            "/usr/share/sounds/ubuntu/stereo/bell.ogg"
+          )
+          
+          sound_played=false
+          for sound_file in "${sound_files[@]}"; do
+            if [[ -f "$sound_file" ]]; then
+              if paplay "$sound_file" 2>/dev/null; then
+                sound_played=true
+                break
+              fi
+              if [[ "$sound_file" == *.wav ]] && command -v aplay >/dev/null 2>&1; then
+                aplay "$sound_file" 2>/dev/null &
+                sound_played=true
+                break
+              fi
+            fi
+          done
+          
+          # Fallback: use system beep if no sound files worked
+          if [[ "$sound_played" == "false" ]]; then
+            printf '\a' # System beep
+          fi
+        fi
+      ) &
+      
+      exit 0
+    else
+      # For longer durations, use cron (seconds will be rounded up to next minute)
+      TARGET_TIME=$((NOW + TOTAL_SECONDS))
+      # Round up to next minute since cron can't handle seconds
+      TARGET_TIME=$(((TARGET_TIME + 59) / 60 * 60))
+    fi
   else
     echo -e "\e[31mError:\e[0m Invalid format for --tempo. Use MM:SS (e.g.: 05:30 for 5 minutes and 30 seconds)"
     exit 1
