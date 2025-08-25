@@ -6,6 +6,8 @@ Una herramienta completa de gestión de alarmas para la línea de comandos que p
 
 - ⏰ **Alarmas instantáneas**: Establece alarmas para una hora específica del día
 - ⏱️ **Temporizadores**: Crea alarmas después de un tiempo específico (MM:SS)
+- ⚡ **Temporizadores inteligentes**: Usa `sleep` para alta precisión (≤3min) o `cron` para duraciones largas
+- 🎛️ **Umbral configurable**: Personaliza cuándo usar `sleep` vs `cron` con `--tempo-threshold`
 - 📅 **Alarmas programadas**: Configura alarmas recurrentes para días específicos
 - 🔇 **Modo silencioso**: Opción para desactivar el sonido
 - 📋 **Gestión completa**: Lista, elimina y borra todas las alarmas
@@ -112,7 +114,7 @@ sudo systemctl status cronie
 alarm HH:MM [-m "mensaje"] [--no-sound]
 
 # Temporizador (alarma después de MM:SS)
-alarm --tempo MM:SS [-m "mensaje"] [--no-sound]
+alarm --tempo MM:SS [-m "mensaje"] [--no-sound] [--tempo-threshold SEGUNDOS]
 
 # Alarma programada (recurrente)
 alarm --schedule HH:MM -m "mensaje" --days DÍAS [--no-sound]
@@ -139,11 +141,20 @@ alarm 16:45 -m "Fin del día laboral" --no-sound
 
 #### Temporizadores
 ```bash
-# Temporizador de 5 minutos
+# Temporizador de 5 minutos (usa cron por defecto, >3min)
 alarm --tempo 05:00
 
 # Temporizador de 25 minutos para técnica Pomodoro
 alarm --tempo 25:00 -m "Descanso Pomodoro"
+
+# Temporizador corto de 2 minutos (usa sleep, alta precisión)
+alarm --tempo 02:00 -m "Timer rápido"
+
+# Forzar uso de sleep para temporizador de 5 minutos
+alarm --tempo 05:00 --tempo-threshold 600 -m "Sleep hasta 10 minutos"
+
+# Forzar uso de cron para temporizador de 1 minuto
+alarm --tempo 01:00 --tempo-threshold 30 -m "Cron para >30 segundos"
 
 # Temporizador silencioso de 1 hora y 30 minutos
 alarm --tempo 90:00 -m "Reunión terminada" --no-sound
@@ -192,6 +203,7 @@ alarm --clear-all
 | `-m, --message` | Mensaje personalizado para la alarma |
 | `--no-sound` | Desactiva el sonido de la alarma |
 | `--tempo` | Modo temporizador (MM:SS) |
+| `--tempo-threshold SEGUNDOS` | Umbral para usar `sleep` vs `cron` (por defecto: 180 segundos/3 minutos) |
 | `--schedule` | Programa alarma recurrente |
 | `--days` | Especifica días para alarmas programadas |
 | `--list` | Lista todas las alarmas configuradas |
@@ -208,6 +220,34 @@ El script busca automáticamente archivos de sonido en el siguiente orden:
 4. `/usr/share/sounds/ubuntu/stereo/bell.ogg`
 
 Si no encuentra ningún archivo, usa el pitido del sistema como respaldo.
+
+## Sistema de Temporizadores Inteligente
+
+El sistema utiliza dos métodos diferentes para manejar temporizadores según su duración:
+
+### 🚀 **Sleep (Alta Precisión)**
+- **Cuándo**: Para temporizadores ≤ umbral (por defecto 180 segundos/3 minutos)
+- **Ventajas**: Precisión al segundo, ejecución instantánea
+- **Limitación**: El proceso debe mantenerse en ejecución
+
+### ⏰ **Cron (Persistente)**
+- **Cuándo**: Para temporizadores > umbral
+- **Ventajas**: Persiste aunque cierres la terminal, manejo de temporizadores largos
+- **Limitación**: Precisión al minuto (los segundos se redondean)
+
+### ⚙️ **Configuración del Umbral**
+
+```bash
+# Usar sleep para temporizadores ≤ 60 segundos
+alarm --tempo 02:00 --tempo-threshold 60
+
+# Usar sleep para temporizadores ≤ 10 minutos  
+alarm --tempo 05:00 --tempo-threshold 600
+
+# Valor por defecto (180 segundos = 3 minutos)
+alarm --tempo 02:30  # Usa sleep (≤3min)
+alarm --tempo 05:00  # Usa cron (>3min)
+```
 
 ## Solución de problemas
 

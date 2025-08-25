@@ -14,6 +14,7 @@ DAYS=""
 SCHEDULE_ID=""
 ACTION=""
 UUID=""
+TEMPO_THRESHOLD=180  # Default: 3 minutes (180 seconds)
 
 # Argument parsing with while loop
 while [[ $# -gt 0 ]]; do
@@ -21,6 +22,15 @@ while [[ $# -gt 0 ]]; do
     --tempo)
       TEMPO_MODE="true"
       TIME="$2"
+      shift 2
+      ;;
+    --tempo-threshold)
+      TEMPO_THRESHOLD="$2"
+      # Validate that threshold is a positive integer
+      if ! [[ "$TEMPO_THRESHOLD" =~ ^[0-9]+$ ]] || [[ "$TEMPO_THRESHOLD" -le 0 ]]; then
+        echo -e "\e[31mError:\e[0m Tempo threshold must be a positive integer (seconds)"
+        exit 1
+      fi
       shift 2
       ;;
     --schedule)
@@ -69,7 +79,7 @@ while [[ $# -gt 0 ]]; do
       echo -e "All alarms show desktop notifications and play sound alerts.\n"
       echo -e "\e[32mUsage:\e[0m"
       echo -e "  alarm HH:MM [-m \"message\"] [--no-sound]"
-      echo -e "  alarm --tempo MM:SS [-m \"message\"] [--no-sound]"
+      echo -e "  alarm --tempo MM:SS [-m \"message\"] [--no-sound] [--tempo-threshold SECONDS]"
       echo -e "  alarm --schedule HH:MM -m \"message\" --days DAYS [--no-sound]"
       echo -e "  alarm --list"
       echo -e "  alarm --remove ID"
@@ -77,11 +87,14 @@ while [[ $# -gt 0 ]]; do
       echo -e "\e[32mExamples:\e[0m"
       echo -e "  alarm 14:30 -m \"Important meeting\""
       echo -e "  alarm --tempo 05:00 -m \"Break\" --no-sound"
+      echo -e "  alarm --tempo 02:30 --tempo-threshold 60 -m \"Use sleep for ≤1min, cron for >1min\""
       echo -e "  alarm --schedule 09:00 -m \"Daily Standup\" --days weekdays"
       echo -e "  alarm --schedule 18:00 -m \"Gym\" --days monday,wednesday,friday"
       echo -e "  alarm --list"
       echo -e "\e[32mValid days:\e[0m weekdays, weekend, daily, monday, tuesday, wednesday, thursday, friday, saturday, sunday"
       echo -e "  Also: monday,friday or tuesday,thursday (combinations)"
+      echo -e "\e[32mTempo threshold:\e[0m --tempo-threshold SECONDS (default: 180)"
+      echo -e "  Alarms ≤ threshold use sleep (precise), > threshold use cron (minute precision)"
       exit 0
       ;;
     *)
@@ -388,7 +401,7 @@ fi
 if [[ "$ACTION" != "trigger" ]] && [[ -z "$TIME" ]]; then
   echo -e "\e[31mError:\e[0m Must specify a time or use --tempo"
   echo -e "\e[33mUsage:\e[0m alarm HH:MM [-m \"message\"] [--no-sound]"
-  echo -e "\e[33m   or:\e[0m alarm --tempo MM:SS [-m \"message\"] [--no-sound]"
+  echo -e "\e[33m   or:\e[0m alarm --tempo MM:SS [-m \"message\"] [--no-sound] [--tempo-threshold SECONDS]"
   echo -e "\e[33m   or:\e[0m alarm --schedule HH:MM -m \"message\" --days DAYS [--no-sound]"
   echo -e "Use alarm --help for more information"
   exit 1
@@ -478,9 +491,9 @@ if [[ "$TEMPO_MODE" == "true" ]]; then
     SECONDS=${BASH_REMATCH[2]}
     TOTAL_SECONDS=$((MINUTES * 60 + SECONDS))
     
-    # For short durations (less than 1 minute), use sleep for precision
+    # For short durations (less than threshold), use sleep for precision
     # For longer durations, use cron (seconds will be ignored)
-    if [[ $TOTAL_SECONDS -lt 60 ]]; then
+    if [[ $TOTAL_SECONDS -lt $TEMPO_THRESHOLD ]]; then
       # Direct execution with sleep - no cron needed
       echo -e "\e[32m✓ Alarm set for:\e[0m $MINUTES:$(printf "%02d" $SECONDS) from now - \"$MESSAGE\""
       
