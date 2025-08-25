@@ -72,18 +72,53 @@ package_installed() {
     esac
 }
 
+# Función para detectar sistema de audio disponible
+detect_audio_system() {
+    if command -v pw-play >/dev/null 2>&1; then
+        echo "pipewire"
+    elif command -v paplay >/dev/null 2>&1; then
+        echo "pulseaudio"
+    elif command -v aplay >/dev/null 2>&1; then
+        echo "alsa"
+    else
+        echo "none"
+    fi
+}
+
 # Función para instalar dependencias según la distribución
 install_dependencies() {
     local packages_to_install=()
+    local audio_packages=()
     
     print_info "Verificando dependencias..."
+    
+    # Detectar sistema de audio actual
+    local current_audio=$(detect_audio_system)
+    print_info "Sistema de audio detectado: $current_audio"
     
     case "$DISTRO" in
         ubuntu|debian)
             # Verificar qué paquetes faltan
             ! package_installed "libnotify-bin" && packages_to_install+=("libnotify-bin")
-            ! package_installed "pulseaudio-utils" && packages_to_install+=("pulseaudio-utils")
             ! package_installed "alsa-utils" && packages_to_install+=("alsa-utils")
+            
+            # Instalar dependencias de audio según disponibilidad
+            if [[ "$current_audio" == "pipewire" ]] || package_installed "pipewire"; then
+                ! package_installed "pipewire-pulse" && audio_packages+=("pipewire-pulse")
+                ! package_installed "pipewire-audio" && audio_packages+=("pipewire-audio")
+                print_info "PipeWire detectado - instalando compatibilidad PulseAudio"
+            elif [[ "$current_audio" == "pulseaudio" ]] || package_installed "pulseaudio"; then
+                ! package_installed "pulseaudio-utils" && audio_packages+=("pulseaudio-utils")
+                print_info "PulseAudio detectado - instalando utilidades"
+            else
+                # Si no hay ninguno, intentar PipeWire primero (más moderno)
+                print_info "No se detectó sistema de audio - instalando PipeWire"
+                ! package_installed "pipewire" && audio_packages+=("pipewire")
+                ! package_installed "pipewire-pulse" && audio_packages+=("pipewire-pulse")
+                ! package_installed "pipewire-audio" && audio_packages+=("pipewire-audio")
+            fi
+            
+            packages_to_install+=("${audio_packages[@]}")
             
             if [[ ${#packages_to_install[@]} -gt 0 ]]; then
                 print_info "Actualizando lista de paquetes..."
@@ -96,8 +131,23 @@ install_dependencies() {
             
         fedora|rhel|centos)
             ! package_installed "libnotify" && packages_to_install+=("libnotify")
-            ! package_installed "pulseaudio-utils" && packages_to_install+=("pulseaudio-utils")
             ! package_installed "alsa-utils" && packages_to_install+=("alsa-utils")
+            
+            # Instalar dependencias de audio según disponibilidad
+            if [[ "$current_audio" == "pipewire" ]] || package_installed "pipewire"; then
+                ! package_installed "pipewire-pulseaudio" && audio_packages+=("pipewire-pulseaudio")
+                print_info "PipeWire detectado - instalando compatibilidad PulseAudio"
+            elif [[ "$current_audio" == "pulseaudio" ]] || package_installed "pulseaudio"; then
+                ! package_installed "pulseaudio-utils" && audio_packages+=("pulseaudio-utils")
+                print_info "PulseAudio detectado - instalando utilidades"
+            else
+                # Si no hay ninguno, intentar PipeWire primero
+                print_info "No se detectó sistema de audio - instalando PipeWire"
+                ! package_installed "pipewire" && audio_packages+=("pipewire")
+                ! package_installed "pipewire-pulseaudio" && audio_packages+=("pipewire-pulseaudio")
+            fi
+            
+            packages_to_install+=("${audio_packages[@]}")
             
             if [[ ${#packages_to_install[@]} -gt 0 ]]; then
                 print_info "Instalando dependencias: ${packages_to_install[*]}"
@@ -107,8 +157,23 @@ install_dependencies() {
             
         arch|manjaro)
             ! package_installed "libnotify" && packages_to_install+=("libnotify")
-            ! package_installed "pulseaudio" && packages_to_install+=("pulseaudio")
             ! package_installed "alsa-utils" && packages_to_install+=("alsa-utils")
+            
+            # Instalar dependencias de audio según disponibilidad
+            if [[ "$current_audio" == "pipewire" ]] || package_installed "pipewire"; then
+                ! package_installed "pipewire-pulse" && audio_packages+=("pipewire-pulse")
+                print_info "PipeWire detectado - instalando compatibilidad PulseAudio"
+            elif [[ "$current_audio" == "pulseaudio" ]] || package_installed "pulseaudio"; then
+                # PulseAudio ya incluye las utilidades en Arch
+                print_info "PulseAudio detectado"
+            else
+                # Si no hay ninguno, intentar PipeWire primero
+                print_info "No se detectó sistema de audio - instalando PipeWire"
+                ! package_installed "pipewire" && audio_packages+=("pipewire")
+                ! package_installed "pipewire-pulse" && audio_packages+=("pipewire-pulse")
+            fi
+            
+            packages_to_install+=("${audio_packages[@]}")
             
             if [[ ${#packages_to_install[@]} -gt 0 ]]; then
                 print_info "Instalando dependencias: ${packages_to_install[*]}"
@@ -121,7 +186,7 @@ install_dependencies() {
             print_info "Distribuciones soportadas: Ubuntu, Debian, Fedora, RHEL, CentOS, Arch Linux, Manjaro"
             print_info "Por favor, instala manualmente las dependencias:"
             print_info "- libnotify (notify-send)"
-            print_info "- pulseaudio-utils"
+            print_info "- pipewire + pipewire-pulse (recomendado) o pulseaudio-utils"
             print_info "- alsa-utils"
             return 1
             ;;
@@ -238,13 +303,25 @@ verify_installation() {
     fi
     
     # Verificar audio
-    if command_exists "paplay"; then
-        print_success "PulseAudio detectado (paplay disponible)"
-    elif command_exists "aplay"; then
-        print_success "ALSA detectado (aplay disponible)"
-    else
-        print_warning "No se detectó sistema de audio. Las alarmas serán silenciosas por defecto"
-    fi
+    local audio_system=$(detect_audio_system)
+    case "$audio_system" in
+        "pipewire")
+            print_success "PipeWire detectado (pw-play disponible)"
+            if command_exists "paplay"; then
+                print_success "Compatibilidad PulseAudio disponible (paplay disponible)"
+            fi
+            ;;
+        "pulseaudio")
+            print_success "PulseAudio detectado (paplay disponible)"
+            ;;
+        "alsa")
+            print_success "ALSA detectado (aplay disponible)"
+            print_warning "Solo archivos .wav serán reproducibles"
+            ;;
+        "none")
+            print_warning "No se detectó sistema de audio. Las alarmas usarán solo beep del sistema"
+            ;;
+    esac
     
     # Probar notificación
     if command_exists "notify-send"; then

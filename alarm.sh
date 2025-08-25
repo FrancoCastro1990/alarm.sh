@@ -111,7 +111,113 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Helper functions
+# Audio system detection and helper functions
+detect_audio_system() {
+    # Check for PipeWire first (modern Linux systems)
+    if command -v pw-play >/dev/null 2>&1; then
+        echo "pipewire"
+    # Check for PulseAudio
+    elif command -v paplay >/dev/null 2>&1; then
+        echo "pulseaudio"
+    # Fallback to ALSA
+    elif command -v aplay >/dev/null 2>&1; then
+        echo "alsa"
+    else
+        echo "none"
+    fi
+}
+
+setup_audio_environment() {
+    local audio_system="$1"
+    
+    case "$audio_system" in
+        "pipewire")
+            # PipeWire uses PulseAudio compatibility but may not have the same socket path
+            # Try to find PipeWire's PulseAudio socket
+            if [[ -S "/run/user/$UID/pipewire-0" ]]; then
+                export PULSE_RUNTIME_PATH="/run/user/$UID"
+            elif [[ -S "/run/user/$UID/pulse/native" ]]; then
+                export PULSE_SERVER="unix:/run/user/$UID/pulse/native"
+            fi
+            ;;
+        "pulseaudio")
+            # Traditional PulseAudio setup
+            export PULSE_SERVER="unix:/run/user/$UID/pulse/native"
+            ;;
+        "alsa"|"none")
+            # No special environment setup needed for ALSA
+            ;;
+    esac
+}
+
+play_sound_file() {
+    local sound_file="$1"
+    local audio_system="$2"
+    
+    # Return false if file doesn't exist
+    [[ ! -f "$sound_file" ]] && return 1
+    
+    case "$audio_system" in
+        "pipewire")
+            # Try pw-play first (native PipeWire)
+            if pw-play "$sound_file" 2>/dev/null; then
+                return 0
+            # Fallback to paplay if available (PulseAudio compatibility)
+            elif command -v paplay >/dev/null 2>&1 && paplay "$sound_file" 2>/dev/null; then
+                return 0
+            fi
+            ;;
+        "pulseaudio")
+            # Use paplay for PulseAudio
+            if paplay "$sound_file" 2>/dev/null; then
+                return 0
+            fi
+            ;;
+        "alsa")
+            # Use aplay for ALSA (only works with .wav files)
+            if [[ "$sound_file" == *.wav ]] && aplay "$sound_file" 2>/dev/null; then
+                return 0
+            fi
+            ;;
+    esac
+    
+    return 1
+}
+
+play_alarm_sound() {
+    # Skip if sound is disabled
+    [[ -n "$NO_SOUND" ]] && return 0
+    
+    # Detect audio system
+    local audio_system=$(detect_audio_system)
+    
+    # Set up audio environment
+    setup_audio_environment "$audio_system"
+    
+    # Try different sound files in order of preference
+    local sound_files=(
+        "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+        "/usr/share/sounds/alsa/Front_Left.wav"
+        "/usr/share/sounds/sound-icons/prompt.wav"
+        "/usr/share/sounds/ubuntu/stereo/bell.ogg"
+        "/usr/share/sounds/freedesktop/stereo/bell.oga"
+        "/usr/share/sounds/freedesktop/stereo/complete.oga"
+    )
+    
+    local sound_played=false
+    for sound_file in "${sound_files[@]}"; do
+        if play_sound_file "$sound_file" "$audio_system"; then
+            sound_played=true
+            break
+        fi
+    done
+    
+    # Final fallback: system beep
+    if [[ "$sound_played" == "false" ]]; then
+        printf '\a' # System beep
+    fi
+}
+
 convert_days_to_cron() {
     case "$1" in
         "weekdays"|"workdays")     echo "1-5" ;;
@@ -434,41 +540,8 @@ if [[ "$ACTION" == "trigger" ]]; then
   # Direct execution of alarm (no sleep)
   notify-send "⏰ Alarm" "$MESSAGE" 2>/dev/null
   
-  # Optional sound - try multiple sound files
-  if [[ -z "$NO_SOUND" ]]; then
-    # Set up audio environment for cron execution
-    export PULSE_SERVER=unix:/run/user/$UID/pulse/native
-    
-    # Try different sound files in order of preference
-    sound_files=(
-      "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
-      "/usr/share/sounds/alsa/Front_Left.wav"
-      "/usr/share/sounds/sound-icons/prompt.wav"
-      "/usr/share/sounds/ubuntu/stereo/bell.ogg"
-    )
-    
-    sound_played=false
-    for sound_file in "${sound_files[@]}"; do
-      if [[ -f "$sound_file" ]]; then
-        # Try paplay first
-        if paplay "$sound_file" 2>/dev/null; then
-          sound_played=true
-          break
-        fi
-        # Try aplay as fallback for wav files
-        if [[ "$sound_file" == *.wav ]] && command -v aplay >/dev/null 2>&1; then
-          aplay "$sound_file" 2>/dev/null &
-          sound_played=true
-          break
-        fi
-      fi
-    done
-    
-    # Fallback: use system beep if no sound files worked
-    if [[ "$sound_played" == "false" ]]; then
-      printf '\a' # System beep
-    fi
-  fi
+  # Play alarm sound using unified function
+  play_alarm_sound
   
   # Auto-cleanup: remove one-time alarms from crontab after execution
   if [[ -n "$UUID" ]]; then
@@ -515,39 +588,8 @@ if [[ "$TEMPO_MODE" == "true" ]]; then
         # Show notification
         notify-send "⏰ Alarm" "$MESSAGE" 2>/dev/null
         
-        # Play sound if not disabled
-        if [[ -z "$NO_SOUND" ]]; then
-          # Set up audio environment
-          export PULSE_SERVER=unix:/run/user/$UID/pulse/native
-          
-          # Try different sound files in order of preference
-          sound_files=(
-            "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
-            "/usr/share/sounds/alsa/Front_Left.wav"
-            "/usr/share/sounds/sound-icons/prompt.wav"
-            "/usr/share/sounds/ubuntu/stereo/bell.ogg"
-          )
-          
-          sound_played=false
-          for sound_file in "${sound_files[@]}"; do
-            if [[ -f "$sound_file" ]]; then
-              if paplay "$sound_file" 2>/dev/null; then
-                sound_played=true
-                break
-              fi
-              if [[ "$sound_file" == *.wav ]] && command -v aplay >/dev/null 2>&1; then
-                aplay "$sound_file" 2>/dev/null &
-                sound_played=true
-                break
-              fi
-            fi
-          done
-          
-          # Fallback: use system beep if no sound files worked
-          if [[ "$sound_played" == "false" ]]; then
-            printf '\a' # System beep
-          fi
-        fi
+        # Play alarm sound using unified function
+        play_alarm_sound
       ) &
       
       exit 0
