@@ -414,7 +414,7 @@ if [[ "$ACTION" == "trigger" ]]; then
   if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]; then
     dbus_pid=$(pgrep -u "$USER" dbus-daemon | head -1)
     if [[ -n "$dbus_pid" ]]; then
-      export DBUS_SESSION_BUS_ADDRESS=$(grep -z DBUS_SESSION_BUS_ADDRESS /proc/$dbus_pid/environ | cut -d= -f2-)
+      export DBUS_SESSION_BUS_ADDRESS=$(tr '\0' '\n' < /proc/$dbus_pid/environ | grep DBUS_SESSION_BUS_ADDRESS | cut -d= -f2-)
     fi
   fi
   
