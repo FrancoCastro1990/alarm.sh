@@ -1,376 +1,372 @@
-# Alarm System 🔔
+# Alarm System
 
-Una herramienta completa de gestión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
+A comprehensive command-line alarm management tool for Linux systems. Supports one-time alarms, recurring scheduled alarms, and relative timers with desktop notifications and audio alerts.
 
-**Disponible en dos versiones:** Cron (tradicional) y systemd timers (moderna) - el instalador automático detecta tu sistema y elige la mejor opción.
+**Available in two versions:** Traditional cron-based implementation and modern systemd timers implementation. The automated installer detects your system capabilities and selects the appropriate version.
 
-## Características
+## Features
 
-- ⏰ **Alarmas instantáneas**: Establece alarmas para una hora específica del día
-- ⏱️ **Temporizadores**: Crea alarmas después de un tiempo específico (MM:SS)
-- ⚡ **Temporizadores inteligentes**: 
-  - **Versión cron**: Usa `sleep` para alta precisión (≤3min) o `cron` para duraciones largas
-  - **Versión systemd**: Usa `sleep` para alta precisión (≤3min) o `systemd timers` para duraciones largas (precisión de segundos)
-- 🎛️ **Umbral configurable**: Personaliza cuándo usar `sleep` vs scheduling system con `--tempo-threshold`
-- 📅 **Alarmas programadas**: Configura alarmas recurrentes para días específicos
-- 🔇 **Modo silencioso**: Opción para desactivar el sonido
-- 📋 **Gestión completa**: Lista, elimina y borra todas las alarmas
-- 🔔 **Notificaciones**: Notificaciones de escritorio automáticas
-- 🎵 **Alertas de sonido**: Múltiples formatos de audio soportados (PipeWire, PulseAudio, ALSA)
-- 🔄 **Instalación inteligente**: Detecta automáticamente si usar cron o systemd
+- **Instant alarms**: Set alarms for specific times of day
+- **Relative timers**: Create countdown timers with MM:SS format
+- **Intelligent timer scheduling**: 
+  - Cron version: Uses `sleep` for high precision (≤3min) or `cron` for long durations
+  - Systemd version: Uses `sleep` for high precision (≤3min) or `systemd timers` with second-level precision
+- **Configurable threshold**: Customize when to use `sleep` vs persistent scheduling with `--tempo-threshold`
+- **Scheduled alarms**: Configure recurring alarms for specific days of the week
+- **Silent mode**: Optional sound suppression
+- **Complete management**: List, remove, and clear all configured alarms
+- **Desktop notifications**: Automatic notifications via libnotify
+- **Audio alerts**: Multiple audio backend support (PipeWire, PulseAudio, ALSA)
+- **Automatic detection**: Installer selects optimal version based on system capabilities
 
-## Dependencias
+## Dependencies
 
-### Requisitos del sistema
+### System Requirements
 
-**Para versión cron (alarm.sh):**
-- **Bash**: Shell compatible (viene preinstalado en la mayoría de distribuciones Linux)
-- **cron**: Para programar alarmas (generalmente preinstalado)
-- **notify-send**: Para notificaciones de escritorio
-- **Audio system**: PipeWire, PulseAudio o ALSA para reproducir sonidos
+**For cron version (alarm.sh):**
+- **Bash**: Version 4.0 or higher (pre-installed on most Linux distributions)
+- **cron**: Scheduling daemon (typically pre-installed or available as `cron` or `cronie` package)
+- **notify-send**: Desktop notification system (libnotify package)
+- **Audio backend**: One of PipeWire, PulseAudio, or ALSA
 
-**Para versión systemd (alarm-v2.sh):**
-- **Bash**: Shell compatible
-- **systemd**: Para gestionar timers (preinstalado en sistemas modernos)
-- **notify-send**: Para notificaciones de escritorio
-- **Audio system**: PipeWire, PulseAudio o ALSA para reproducir sonidos
+**For systemd version (alarm-v2.sh):**
+- **Bash**: Version 4.0 or higher
+- **systemd**: Init system with timer support (pre-installed on modern Linux distributions)
+- **notify-send**: Desktop notification system (libnotify package)
+- **Audio backend**: One of PipeWire, PulseAudio, or ALSA
 
-> **💡 Nota:** El instalador automático detecta qué sistema tienes disponible (cron, systemd o ambos) y selecciona la versión apropiada.
+**Note:** The automated installer detects available scheduling systems (cron, systemd, or both) and selects the appropriate version.
 
-### Instalación de dependencias
+### Dependency Installation
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt update
 sudo apt install libnotify-bin pipewire-pulse alsa-utils
-# o para PulseAudio tradicional:
+# For traditional PulseAudio:
 # sudo apt install libnotify-bin pulseaudio-utils alsa-utils
 ```
 
 **Fedora/RHEL/CentOS:**
 ```bash
 sudo dnf install libnotify pipewire-pulseaudio alsa-utils
-# o para PulseAudio tradicional:
+# For traditional PulseAudio:
 # sudo dnf install libnotify pulseaudio-utils alsa-utils
 ```
 
 **Arch Linux:**
 ```bash
 sudo pacman -S libnotify pipewire-pulse alsa-utils
-# o para PulseAudio tradicional:
+# For traditional PulseAudio:
 # sudo pacman -S libnotify pulseaudio alsa-utils
 ```
 
-> **💡 Tip:** El instalador automático detecta tu sistema de audio (PipeWire o PulseAudio) e instala las dependencias correctas.
+**Note:** The automated installer detects your audio system (PipeWire or PulseAudio) and installs the appropriate dependencies.
 
-## Instalación
+## Installation
 
-### Instalación rápida con una línea 🚀
+### Quick Installation
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/install.sh | bash
 ```
 
-> **💡 Tip:** Este comando descarga y ejecuta automáticamente el instalador, detecta tu sistema operativo, instala todas las dependencias y configura la herramienta. ¡Listo en segundos!
+This command downloads and executes the automated installer, which detects your operating system, installs all required dependencies, and configures the tool.
 
-> **🔒 Seguridad:** Si prefieres revisar el código antes de ejecutar, puedes ver el script de instalación [aquí](https://github.com/FrancoCastro1990/alarm.sh/blob/main/install.sh) o usar la instalación manual.
+**Security Note:** To review the installation script before execution, see [install.sh](https://github.com/FrancoCastro1990/alarm.sh/blob/main/install.sh) or use the manual installation method.
 
-### Instalación automática (Alternativa) 📥
+### Automated Installation (Alternative Method)
 
-1. **Clona el repositorio:**
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/FrancoCastro1990/alarm.sh.git
 cd alarm.sh
 ```
 
-2. **Ejecuta el script de instalación:**
+2. **Execute the installation script:**
 ```bash
 ./install.sh
 ```
 
-El script de instalación automáticamente:
-- ✅ Detecta tu distribución Linux (Ubuntu, Debian, Fedora, Arch, etc.)
-- ✅ Detecta si tienes cron, systemd o ambos
-- ✅ Selecciona la versión apropiada (alarm.sh para cron o alarm-v2.sh para systemd)
-- ✅ Detecta tu sistema de audio (PipeWire, PulseAudio o ALSA)
-- ✅ Instala todas las dependencias necesarias según tu sistema
-- ✅ Configura y verifica el servicio correspondiente (cron o systemd)
-- ✅ Hace el script ejecutable
-- ✅ Opcionalmente instala el comando globalmente
-- ✅ Verifica que todo funcione correctamente
+The installation script automatically:
+- Detects your Linux distribution (Ubuntu, Debian, Fedora, Arch, etc.)
+- Detects available scheduling systems (cron, systemd, or both)
+- Selects the appropriate version (alarm.sh for cron or alarm-v2.sh for systemd)
+- Detects your audio system (PipeWire, PulseAudio, or ALSA)
+- Installs all required dependencies for your system
+- Configures and verifies the corresponding service (cron or systemd)
+- Makes the script executable
+- Optionally installs the command globally
+- Verifies successful installation
 
-### Instalación manual
+### Manual Installation
 
-Si prefieres instalar manualmente o el script automático no funciona en tu sistema:
+For manual installation or if the automated script fails on your system:
 
-1. **Clona o descarga el script:**
+1. **Clone or download the repository:**
 ```bash
 git clone https://github.com/FrancoCastro1990/alarm.sh.git
 cd alarm.sh
 ```
 
-2. **Instala las dependencias según tu distribución:**
+2. **Install dependencies according to your distribution:**
    - **Ubuntu/Debian:** `sudo apt update && sudo apt install libnotify-bin pulseaudio-utils alsa-utils`
    - **Fedora/RHEL:** `sudo dnf install libnotify pulseaudio-utils alsa-utils`
    - **Arch Linux:** `sudo pacman -S libnotify pulseaudio alsa-utils`
 
-3. **Haz el script ejecutable:**
+3. **Make the script executable:**
 ```bash
 chmod +x alarm.sh
 ```
 
-4. **Opcionalmente, instala globalmente:**
+4. **Optional: Install globally**
 
-Para la versión con systemd:
+For systemd version:
 ```bash
 sudo cp alarm-v2.sh /usr/local/bin/alarm
 ```
 
-Para la versión con cron:
+For cron version:
 ```bash
 sudo cp alarm.sh /usr/local/bin/alarm
 ```
 
-5. **Verifica que el servicio esté ejecutándose:**
+5. **Verify service status:**
 
-Para systemd:
+For systemd:
 ```bash
-systemctl status systemd-logind  # Verifica que systemd esté activo
-systemctl --user list-timers     # Lista los timers del usuario
+systemctl status systemd-logind  # Verify systemd is active
+systemctl --user list-timers     # List user timers
 ```
 
-Para cron:
+For cron:
 ```bash
 sudo systemctl status cron
-# o en sistemas con systemd:
+# On systemd-based systems:
 sudo systemctl status cronie
 ```
 
-## Uso
+## Usage
 
-> **Nota:** `alarm.sh` (cron) y `alarm-v2.sh` (systemd) tienen la misma interfaz de comandos. Simplemente usa el script que instaló el instalador.
+**Note:** Both `alarm.sh` (cron) and `alarm-v2.sh` (systemd) provide identical command-line interfaces. Use the version selected by the installer.
 
-### Sintaxis básica
+### Basic Syntax
 
 ```bash
-# Alarma para una hora específica
-alarm HH:MM [-m "mensaje"] [--no-sound]
+# Set alarm for specific time
+alarm HH:MM [-m "message"] [--no-sound]
 
-# Temporizador (alarma después de MM:SS)
-alarm --tempo MM:SS [-m "mensaje"] [--no-sound] [--tempo-threshold SEGUNDOS]
+# Relative timer (alarm after MM:SS)
+alarm --tempo MM:SS [-m "message"] [--no-sound] [--tempo-threshold SECONDS]
 
-# Alarma programada (recurrente)
-alarm --schedule HH:MM -m "mensaje" --days DÍAS [--no-sound]
+# Scheduled recurring alarm
+alarm --schedule HH:MM -m "message" --days DAYS [--no-sound]
 
-# Gestión de alarmas
+# Alarm management
 alarm --list
 alarm --remove ID
 alarm --clear-all
 ```
 
-### Ejemplos prácticos
+### Practical Examples
 
-#### Alarmas instantáneas
+#### One-Time Alarms
 ```bash
-# Alarma para las 2:30 PM
+# Alarm at 2:30 PM
 alarm 14:30
 
-# Alarma con mensaje personalizado
-alarm 09:00 -m "Reunión importante"
+# Alarm with custom message
+alarm 09:00 -m "Important meeting"
 
-# Alarma silenciosa
-alarm 16:45 -m "Fin del día laboral" --no-sound
+# Silent alarm
+alarm 16:45 -m "End of workday" --no-sound
 ```
 
-#### Temporizadores
+#### Relative Timers
 ```bash
-# Temporizador de 5 minutos
+# 5-minute timer
 alarm --tempo 05:00
 
-# Temporizador de 25 minutos para técnica Pomodoro
-alarm --tempo 25:00 -m "Descanso Pomodoro"
+# 25-minute timer for Pomodoro technique
+alarm --tempo 25:00 -m "Pomodoro break"
 
-# Temporizador corto de 2 minutos (usa sleep, alta precisión)
-alarm --tempo 02:00 -m "Timer rápido"
+# Short 2-minute timer (uses sleep for high precision)
+alarm --tempo 02:00 -m "Quick timer"
 
-# Forzar uso de sleep para temporizador de 5 minutos
-alarm --tempo 05:00 --tempo-threshold 600 -m "Sleep hasta 10 minutos"
+# Force sleep usage for 5-minute timer
+alarm --tempo 05:00 --tempo-threshold 600 -m "Sleep up to 10 minutes"
 
-# Forzar uso del backend para temporizador de 1 minuto
-# (cron en alarm.sh, systemd en alarm-v2.sh)
-alarm --tempo 01:00 --tempo-threshold 30 -m "Backend para >30 segundos"
+# Force backend usage for 1-minute timer
+# (cron in alarm.sh, systemd in alarm-v2.sh)
+alarm --tempo 01:00 --tempo-threshold 30 -m "Backend for >30 seconds"
 
-# Temporizador silencioso de 1 hora y 30 minutos
-alarm --tempo 90:00 -m "Reunión terminada" --no-sound
+# Silent 1 hour 30 minute timer
+alarm --tempo 90:00 -m "Meeting finished" --no-sound
 ```
 
-#### Alarmas programadas (recurrentes)
+#### Scheduled Recurring Alarms
 ```bash
-# Alarma diaria a las 9:00 AM
+# Daily alarm at 9:00 AM
 alarm --schedule 09:00 -m "Daily Standup" --days daily
 
-# Alarma de lunes a viernes
-alarm --schedule 08:00 -m "Hora de trabajar" --days weekdays
+# Weekday alarm (Monday through Friday)
+alarm --schedule 08:00 -m "Work time" --days weekdays
 
-# Alarma de fin de semana
-alarm --schedule 10:00 -m "Desayuno relajado" --days weekend
+# Weekend alarm
+alarm --schedule 10:00 -m "Relaxed breakfast" --days weekend
 
-# Días específicos
-alarm --schedule 18:00 -m "Gimnasio" --days monday,wednesday,friday
+# Specific days
+alarm --schedule 18:00 -m "Gym" --days monday,wednesday,friday
 
-# Un día específico
-alarm --schedule 20:00 -m "Serie favorita" --days friday
+# Single specific day
+alarm --schedule 20:00 -m "Favorite show" --days friday
 ```
 
-#### Gestión de alarmas
+#### Alarm Management
 ```bash
-# Listar todas las alarmas configuradas
+# List all configured alarms
 alarm --list
 
-# Eliminar alarma específica (usar ID de la lista)
+# Remove specific alarm (use ID from list)
 alarm --remove 1
 
-# Eliminar todas las alarmas
+# Remove all alarms
 alarm --clear-all
 ```
 
-### Días válidos para alarmas programadas
+### Valid Day Specifications for Scheduled Alarms
 
-- **Grupos de días**: `daily`, `weekdays`, `weekend`
-- **Días individuales**: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`
-- **Combinaciones**: `monday,friday`, `tuesday,thursday`, etc.
+- **Day groups**: `daily`, `weekdays`, `weekend`
+- **Individual days**: `monday`, `tuesday`, `wednesday`, `thursday`, `friday`, `saturday`, `sunday`
+- **Combinations**: `monday,friday`, `tuesday,thursday`, etc.
 
-### Opciones disponibles
+### Available Options
 
-| Opción | Descripción |
+| Option | Description |
 |--------|-------------|
-| `-m, --message` | Mensaje personalizado para la alarma |
-| `--no-sound` | Desactiva el sonido de la alarma |
-| `--tempo` | Modo temporizador (MM:SS) |
-| `--tempo-threshold SEGUNDOS` | Umbral para usar `sleep` vs backend (por defecto: 180 segundos/3 minutos) |
-| `--schedule` | Programa alarma recurrente |
-| `--days` | Especifica días para alarmas programadas |
-| `--list` | Lista todas las alarmas configuradas |
-| `--remove ID` | Elimina alarma específica por ID |
-| `--clear-all` | Elimina todas las alarmas |
-| `-h, --help` | Muestra ayuda detallada |
+| `-m, --message` | Custom message for the alarm |
+| `--no-sound` | Suppress audio alert |
+| `--tempo` | Timer mode (MM:SS format) |
+| `--tempo-threshold SECONDS` | Threshold for `sleep` vs backend scheduling (default: 180 seconds/3 minutes) |
+| `--schedule` | Schedule recurring alarm |
+| `--days` | Specify days for scheduled alarms |
+| `--list` | List all configured alarms |
+| `--remove ID` | Remove specific alarm by ID |
+| `--clear-all` | Remove all alarms |
+| `-h, --help` | Display detailed help |
 
-## Archivos de sonido
+## Audio Files
 
-El script busca automáticamente archivos de sonido en el siguiente orden:
+The script automatically searches for audio files in the following order:
 1. `/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga`
 2. `/usr/share/sounds/alsa/Front_Left.wav`
 3. `/usr/share/sounds/sound-icons/prompt.wav`
 4. `/usr/share/sounds/ubuntu/stereo/bell.ogg`
 
-Si no encuentra ningún archivo, usa el pitido del sistema como respaldo.
+If no audio file is found, the system uses the terminal bell as fallback.
 
-## Sistema de Temporizadores Inteligente
+## Intelligent Timer System
 
-El sistema utiliza dos métodos diferentes para manejar temporizadores según su duración:
+The system employs two different methods for handling timers based on duration:
 
-### 🚀 **Sleep (Alta Precisión)**
-- **Cuándo**: Para temporizadores ≤ umbral (por defecto 180 segundos/3 minutos)
-- **Ventajas**: Precisión al segundo, ejecución instantánea
-- **Limitación**: El proceso debe mantenerse en ejecución
+### Sleep Mode (High Precision)
+- **When**: Timers ≤ threshold (default: 180 seconds/3 minutes)
+- **Advantages**: Second-level precision, immediate execution
+- **Limitation**: Process must remain running
 
-### ⏰ **Backend Persistente (Cron o Systemd)**
-- **Cuándo**: Para temporizadores > umbral
-- **Ventajas**: Persiste aunque cierres la terminal, manejo de temporizadores largos
-- **alarm.sh (cron)**: Precisión al minuto (los segundos se redondean)
-- **alarm-v2.sh (systemd)**: Precisión al segundo
+### Persistent Backend (Cron or Systemd)
+- **When**: Timers > threshold
+- **Advantages**: Persists across terminal sessions, handles long-duration timers
+- **alarm.sh (cron)**: Minute-level precision (seconds rounded)
+- **alarm-v2.sh (systemd)**: Second-level precision
 
-### ⚙️ **Configuración del Umbral**
+### Threshold Configuration
 
 ```bash
-# Usar sleep para temporizadores ≤ 60 segundos
+# Use sleep for timers ≤ 60 seconds
 alarm --tempo 02:00 --tempo-threshold 60
 
-# Usar sleep para temporizadores ≤ 10 minutos  
+# Use sleep for timers ≤ 10 minutes  
 alarm --tempo 05:00 --tempo-threshold 600
 
-# Valor por defecto (180 segundos = 3 minutos)
-alarm --tempo 02:30  # Usa sleep (≤3min)
-alarm --tempo 05:00  # Usa backend persistente (>3min)
+# Default value (180 seconds = 3 minutes)
+alarm --tempo 02:30  # Uses sleep (≤3min)
+alarm --tempo 05:00  # Uses persistent backend (>3min)
 ```
 
-## Comparación de Versiones
+## Version Comparison
 
-| Característica | alarm.sh (cron) | alarm-v2.sh (systemd) |
-|----------------|-----------------|----------------------|
-| **Backend** | cron service | systemd timers |
-| **Precisión alarmas** | Minuto | Segundo |
-| **Precisión temporizadores** | Minuto (>umbral) | Segundo |
-| **Persistencia** | ✅ Sí | ✅ Sí |
-| **Requisitos** | cron instalado | systemd instalado |
-| **Compatibilidad** | Todos los Unix | Linux moderno |
-| **Gestión** | crontab -l | systemctl --user list-timers |
+| Feature | alarm.sh (cron) | alarm-v2.sh (systemd) |
+|---------|-----------------|----------------------|
+| **Backend** | cron daemon | systemd timers |
+| **Alarm precision** | Minute | Second |
+| **Timer precision** | Minute (>threshold) | Second |
+| **Persistence** | Yes | Yes |
+| **Requirements** | cron installed | systemd installed |
+| **Compatibility** | All Unix-like systems | Modern Linux distributions |
+| **Management** | crontab -l | systemctl --user list-timers |
 | **Logs** | /var/log/syslog | journalctl --user |
 
-## Solución de problemas
+## Troubleshooting
 
-### Las notificaciones no aparecen
-- Verifica que `notify-send` esté instalado
-- Asegúrate de que tu entorno de escritorio soporte notificaciones
+### Desktop notifications not appearing
+- Verify `notify-send` is installed
+- Ensure your desktop environment supports libnotify notifications
 
-### No se reproduce sonido
-- Verifica que tu sistema de audio esté funcionando (PipeWire, PulseAudio o ALSA)
-- Comprueba que existan archivos de sonido en las rutas especificadas
-- Prueba reproducir sonido manualmente:
+### No audio playback
+- Verify audio system is functioning (PipeWire, PulseAudio, or ALSA)
+- Check that audio files exist at specified paths
+- Test audio playback manually:
   - PipeWire: `pw-play /usr/share/sounds/alsa/Front_Left.wav`
   - PulseAudio: `paplay /usr/share/sounds/alsa/Front_Left.wav`
   - ALSA: `aplay /usr/share/sounds/alsa/Front_Left.wav`
 
-### Las alarmas no se ejecutan (alarm.sh con cron)
-- Verifica que el servicio cron esté ejecutándose: `sudo systemctl status cron` o `sudo systemctl status cronie`
-- Comprueba tu crontab: `crontab -l`
-- Revisa los logs del sistema: `grep CRON /var/log/syslog`
+### Alarms not executing (alarm.sh with cron)
+- Verify cron service is running: `sudo systemctl status cron` or `sudo systemctl status cronie`
+- Check your crontab: `crontab -l`
+- Review system logs: `grep CRON /var/log/syslog`
 
-### Las alarmas no se ejecutan (alarm-v2.sh con systemd)
-- Verifica tus timers de usuario: `systemctl --user list-timers`
-- Comprueba el estado de un timer específico: `systemctl --user status alarm-ID.timer`
-- Revisa los logs: `journalctl --user -u alarm-ID.service`
-- Verifica que systemd user timers estén habilitados: `loginctl show-user $USER`
+### Alarms not executing (alarm-v2.sh with systemd)
+- Verify user timers: `systemctl --user list-timers`
+- Check specific timer status: `systemctl --user status alarm-ID.timer`
+- Review logs: `journalctl --user -u alarm-ID.service`
+- Verify systemd user timers are enabled: `loginctl show-user $USER`
 
-### Las alarmas programadas no funcionan
+### Scheduled alarms not working
 
-**Para alarm.sh (cron):**
-- Verifica que cron esté ejecutándose: `sudo systemctl status cron`
-- Comprueba que el script tenga permisos de ejecución
-- Revisa los logs de cron: `sudo tail -f /var/log/cron`
-- Verifica tu zona horaria: `date`
-- Asegúrate de que el formato de hora sea correcto (HH:MM en formato 24 horas)
+**For alarm.sh (cron):**
+- Verify cron is running: `sudo systemctl status cron`
+- Check script has execution permissions
+- Review cron logs: `sudo tail -f /var/log/cron`
+- Verify timezone: `date`
+- Ensure time format is correct (HH:MM in 24-hour format)
 
-**Para alarm-v2.sh (systemd):**
-- Lista tus timers activos: `systemctl --user list-timers --all`
-- Verifica el calendario del timer: `systemctl --user cat alarm-ID.timer`
-- Prueba manualmente el servicio: `systemctl --user start alarm-ID.service`
-- Revisa que los días especificados sean válidos
+**For alarm-v2.sh (systemd):**
+- List active timers: `systemctl --user list-timers --all`
+- Verify timer calendar specification: `systemctl --user cat alarm-ID.timer`
+- Test service manually: `systemctl --user start alarm-ID.service`
+- Verify day specifications are valid
 
-## Limitaciones
+## Limitations
 
-- Requiere que el sistema esté encendido para que las alarmas funcionen
-- **alarm.sh**: Las alarmas programadas dependen del servicio cron (precisión de minuto)
-- **alarm-v2.sh**: Las alarmas programadas dependen de systemd timers (precisión de segundo)
-- Las notificaciones requieren un entorno de escritorio activo
+- System must be powered on for alarms to execute
+- **alarm.sh**: Scheduled alarms depend on cron service (minute-level precision)
+- **alarm-v2.sh**: Scheduled alarms depend on systemd timers (second-level precision)
+- Desktop notifications require an active desktop environment
 
-## Contribuciones
+## Contributing
 
-Las contribuciones son bienvenidas. Por favor:
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agrega nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abre un Pull Request
+Contributions are welcome. Please follow these steps:
+1. Fork the project
+2. Create a feature branch (`git checkout -b feature/new-functionality`)
+3. Commit your changes (`git commit -am 'Add new functionality'`)
+4. Push to the branch (`git push origin feature/new-functionality`)
+5. Open a Pull Request
 
-## Licencia
+## License
 
-Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más detalles.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
-## Autor
+## Author
 
 **Franco Castro**
-
----
-
-*¿Encontraste útil esta herramienta? ¡Dale una estrella al repositorio! ⭐*
