@@ -199,41 +199,166 @@ install_dependencies() {
     fi
 }
 
-# Función para verificar servicios
-check_services() {
-    print_info "Verificando servicios del sistema..."
+# Función para detectar si cron está disponible
+has_cron() {
+    # Verificar si crontab existe
+    if command_exists "crontab"; then
+        return 0
+    fi
     
-    # Verificar cron
-    if systemctl is-active --quiet cron 2>/dev/null; then
-        print_success "Servicio cron está activo"
-    elif systemctl is-active --quiet cronie 2>/dev/null; then
-        print_success "Servicio cronie está activo"
+    # Verificar si el servicio cron existe
+    if systemctl list-unit-files | grep -q "^cron.service\|^cronie.service" 2>/dev/null; then
+        return 0
+    fi
+    
+    return 1
+}
+
+# Función para detectar si systemd está disponible
+has_systemd() {
+    if command_exists "systemctl" && systemctl --version >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+# Función para determinar qué versión instalar
+select_version() {
+    print_info "Detectando sistema de scheduling disponible..."
+    
+    local has_cron_system=false
+    local has_systemd_system=false
+    
+    if has_systemd; then
+        has_systemd_system=true
+        local systemd_version=$(systemctl --version | head -1 | awk '{print $2}')
+        print_success "✓ systemd detectado (versión $systemd_version)"
     else
-        print_warning "Servicio cron no está activo"
-        print_info "Intentando iniciar servicio cron..."
-        
-        if systemctl list-unit-files | grep -q "^cron.service"; then
-            sudo systemctl enable --now cron
-        elif systemctl list-unit-files | grep -q "^cronie.service"; then
-            sudo systemctl enable --now cronie
+        print_warning "✗ systemd no disponible"
+    fi
+    
+    if has_cron; then
+        has_cron_system=true
+        print_success "✓ cron detectado"
+    else
+        print_warning "✗ cron no disponible"
+    fi
+    
+    echo
+    
+    # Validar que al menos uno esté disponible
+    if [[ "$has_cron_system" == false ]] && [[ "$has_systemd_system" == false ]]; then
+        print_error "❌ Sistema incompatible"
+        echo
+        print_error "No se detectó ni systemd ni cron en este sistema"
+        print_info "alarm.sh requiere al menos uno de los siguientes:"
+        print_info "  • systemd (systemctl) - para alarm-v2.sh (recomendado)"
+        print_info "  • cron (crontab) - para alarm.sh"
+        echo
+        print_info "Por favor, instala uno de estos sistemas:"
+        echo
+        case "$DISTRO" in
+            ubuntu|debian)
+                print_info "  Para systemd: sudo apt install systemd"
+                print_info "  Para cron:    sudo apt install cron"
+                ;;
+            fedora|rhel|centos)
+                print_info "  Para systemd: sudo dnf install systemd"
+                print_info "  Para cron:    sudo dnf install cronie"
+                ;;
+            arch|manjaro)
+                print_info "  Para systemd: sudo pacman -S systemd"
+                print_info "  Para cron:    sudo pacman -S cronie"
+                ;;
+            *)
+                print_info "  Instala systemd o cron según tu distribución"
+                ;;
+        esac
+        echo
+        return 1
+    fi
+    
+    # Decidir qué versión instalar (prioridad: systemd > cron)
+    if [[ "$has_systemd_system" == true ]]; then
+        if [[ "$has_cron_system" == true ]]; then
+            print_info "Ambos sistemas disponibles: systemd y cron"
+            print_info "Se recomienda usar la versión systemd (más moderna y precisa)"
+            echo
+            read -p "¿Qué versión deseas instalar? [1=systemd, 2=cron] (default: 1): " -n 1 -r
+            echo
+            
+            if [[ $REPLY == "2" ]]; then
+                ALARM_VERSION="cron"
+                ALARM_SCRIPT="alarm.sh"
+                print_success "Seleccionada: alarm.sh (versión cron)"
+            else
+                ALARM_VERSION="systemd"
+                ALARM_SCRIPT="alarm-v2.sh"
+                print_success "Seleccionada: alarm-v2.sh (versión systemd)"
+            fi
         else
-            print_error "No se encontró servicio cron en el sistema"
+            print_info "Solo systemd disponible - instalando alarm-v2.sh"
+            ALARM_VERSION="systemd"
+            ALARM_SCRIPT="alarm-v2.sh"
+        fi
+    elif [[ "$has_cron_system" == true ]]; then
+        print_info "Solo cron disponible - instalando alarm.sh"
+        ALARM_VERSION="cron"
+        ALARM_SCRIPT="alarm.sh"
+    fi
+    
+    echo
+    print_info "Versión seleccionada: $ALARM_SCRIPT"
+    return 0
+}
+
+# Función para verificar servicios según la versión
+check_services() {
+    if [[ "$ALARM_VERSION" == "cron" ]]; then
+        print_info "Verificando servicio cron..."
+        
+        # Verificar cron
+        if systemctl is-active --quiet cron 2>/dev/null; then
+            print_success "Servicio cron está activo"
+        elif systemctl is-active --quiet cronie 2>/dev/null; then
+            print_success "Servicio cronie está activo"
+        else
+            print_warning "Servicio cron no está activo"
+            print_info "Intentando iniciar servicio cron..."
+            
+            if systemctl list-unit-files | grep -q "^cron.service"; then
+                sudo systemctl enable --now cron
+            elif systemctl list-unit-files | grep -q "^cronie.service"; then
+                sudo systemctl enable --now cronie
+            else
+                print_error "No se encontró servicio cron en el sistema"
+                return 1
+            fi
+            
+            print_success "Servicio cron iniciado y habilitado"
+        fi
+    else
+        print_info "Verificando systemd..."
+        if has_systemd; then
+            print_success "systemd está disponible y funcionando"
+        else
+            print_error "systemd no está disponible"
             return 1
         fi
-        
-        print_success "Servicio cron iniciado y habilitado"
     fi
 }
 
-# Función para descargar alarm.sh si no existe
+# Función para descargar scripts si no existen
 download_alarm_script() {
-    if [[ ! -f "alarm.sh" ]]; then
-        print_info "Descargando alarm.sh desde GitHub..."
+    local script_to_download="$1"
+    
+    if [[ ! -f "$script_to_download" ]]; then
+        print_info "Descargando $script_to_download desde GitHub..."
         
         if command_exists "curl"; then
-            curl -fsSL -o alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/alarm.sh
+            curl -fsSL -o "$script_to_download" "https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/$script_to_download"
         elif command_exists "wget"; then
-            wget -q -O alarm.sh https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/alarm.sh
+            wget -q -O "$script_to_download" "https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/$script_to_download"
         else
             print_error "Se requiere curl o wget para descargar el script"
             print_info "Por favor instala curl: sudo apt install curl (Ubuntu/Debian)"
@@ -241,10 +366,10 @@ download_alarm_script() {
             return 1
         fi
         
-        if [[ -f "alarm.sh" ]]; then
-            print_success "alarm.sh descargado correctamente"
+        if [[ -f "$script_to_download" ]]; then
+            print_success "$script_to_download descargado correctamente"
         else
-            print_error "Error descargando alarm.sh"
+            print_error "Error descargando $script_to_download"
             return 1
         fi
     fi
@@ -252,24 +377,24 @@ download_alarm_script() {
 
 # Función para configurar el script
 setup_script() {
-    print_info "Configurando alarm.sh..."
+    print_info "Configurando $ALARM_SCRIPT..."
     
-    # Descargar alarm.sh si no existe (para instalación directa con curl)
-    if ! download_alarm_script; then
+    # Descargar el script seleccionado si no existe
+    if ! download_alarm_script "$ALARM_SCRIPT"; then
         return 1
     fi
     
-    # Verificar que alarm.sh existe
-    if [[ ! -f "alarm.sh" ]]; then
-        print_error "No se encontró el archivo alarm.sh"
-        print_info "Asegúrate de ejecutar este script desde el directorio que contiene alarm.sh"
+    # Verificar que el script existe
+    if [[ ! -f "$ALARM_SCRIPT" ]]; then
+        print_error "No se encontró el archivo $ALARM_SCRIPT"
+        print_info "Asegúrate de ejecutar este script desde el directorio que contiene $ALARM_SCRIPT"
         print_info "O usa la instalación con curl: curl -fsSL https://raw.githubusercontent.com/FrancoCastro1990/alarm.sh/refs/heads/main/install.sh | bash"
         return 1
     fi
     
     # Hacer ejecutable
-    chmod +x alarm.sh
-    print_success "Permisos de ejecución establecidos para alarm.sh"
+    chmod +x "$ALARM_SCRIPT"
+    print_success "Permisos de ejecución establecidos para $ALARM_SCRIPT"
     
     # Preguntar si quiere instalación global
     echo
@@ -279,11 +404,25 @@ setup_script() {
     echo
     
     if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-        sudo cp alarm.sh /usr/local/bin/alarm
-        print_success "Script instalado globalmente como 'alarm'"
+        sudo cp "$ALARM_SCRIPT" /usr/local/bin/alarm
+        print_success "Script instalado globalmente como 'alarm' ($ALARM_SCRIPT)"
         print_info "Ahora puedes usar 'alarm' desde cualquier directorio"
+        
+        # Mostrar info sobre la versión instalada
+        echo
+        if [[ "$ALARM_VERSION" == "systemd" ]]; then
+            print_info "📌 Versión instalada: systemd (alarm-v2.sh)"
+            print_info "   - Precisión de segundos"
+            print_info "   - No requiere cron"
+            print_info "   - Compatible con systemd timers"
+        else
+            print_info "📌 Versión instalada: cron (alarm.sh)"
+            print_info "   - Precisión de minutos"
+            print_info "   - Requiere servicio cron activo"
+            print_info "   - Compatible con sistemas tradicionales"
+        fi
     else
-        print_info "Script configurado localmente. Usa './alarm.sh' para ejecutar"
+        print_info "Script configurado localmente. Usa './$ALARM_SCRIPT' para ejecutar"
     fi
 }
 
@@ -295,7 +434,11 @@ verify_installation() {
     local missing_commands=()
     
     ! command_exists "notify-send" && missing_commands+=("notify-send")
-    ! command_exists "crontab" && missing_commands+=("crontab")
+    
+    # Solo verificar crontab si estamos usando la versión cron
+    if [[ "$ALARM_VERSION" == "cron" ]]; then
+        ! command_exists "crontab" && missing_commands+=("crontab")
+    fi
     
     if [[ ${#missing_commands[@]} -gt 0 ]]; then
         print_error "Comandos faltantes: ${missing_commands[*]}"
@@ -325,7 +468,7 @@ verify_installation() {
     
     # Probar notificación
     if command_exists "notify-send"; then
-        notify-send "Alarm System" "¡Instalación completada exitosamente!" 2>/dev/null || true
+        notify-send "Alarm System" "¡Instalación completada exitosamente! (versión: $ALARM_VERSION)" 2>/dev/null || true
         print_success "Sistema de notificaciones funcionando"
     fi
     
@@ -335,6 +478,16 @@ verify_installation() {
 # Función para mostrar ejemplos de uso
 show_usage_examples() {
     print_header "¡Instalación completada! 🎉"
+    echo
+    
+    if [[ "$ALARM_VERSION" == "systemd" ]]; then
+        print_success "Versión instalada: alarm-v2.sh (systemd timers)"
+        print_info "Ventajas: Precisión de segundos, mejor logging, no requiere cron"
+    else
+        print_success "Versión instalada: alarm.sh (cron)"
+        print_info "Compatible con sistemas tradicionales Unix/Linux"
+    fi
+    
     echo
     print_info "Ejemplos de uso:"
     echo
@@ -353,6 +506,14 @@ show_usage_examples() {
     echo "  # Ayuda completa"
     echo "  alarm --help"
     echo
+    
+    if [[ "$ALARM_VERSION" == "systemd" ]]; then
+        print_info "💡 Comandos adicionales de systemd:"
+        echo "   systemctl --user list-timers    # Ver todos los timers de usuario"
+        echo "   journalctl --user -u alarm-*    # Ver logs de las alarmas"
+        echo
+    fi
+    
     print_info "Para más ejemplos, consulta: https://github.com/FrancoCastro1990/alarm.sh#readme"
     echo
     print_info "💡 Comparte este instalador:"
@@ -387,6 +548,12 @@ main() {
     print_success "Conexión a internet verificada"
     echo
     
+    # Seleccionar versión según disponibilidad de cron/systemd
+    if ! select_version; then
+        exit 1
+    fi
+    echo
+    
     # Instalar dependencias
     if ! install_dependencies; then
         print_error "Error instalando dependencias"
@@ -394,7 +561,7 @@ main() {
     fi
     echo
     
-    # Verificar servicios
+    # Verificar servicios según la versión
     if ! check_services; then
         print_error "Error configurando servicios"
         exit 1

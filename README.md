@@ -2,43 +2,66 @@
 
 Una herramienta completa de gestión de alarmas para la línea de comandos que permite crear alarmas instantáneas, programar alarmas recurrentes y configurar temporizadores relativos. Todas las alarmas muestran notificaciones de escritorio y reproducen alertas de sonido.
 
+**Disponible en dos versiones:** Cron (tradicional) y systemd timers (moderna) - el instalador automático detecta tu sistema y elige la mejor opción.
+
 ## Características
 
 - ⏰ **Alarmas instantáneas**: Establece alarmas para una hora específica del día
 - ⏱️ **Temporizadores**: Crea alarmas después de un tiempo específico (MM:SS)
-- ⚡ **Temporizadores inteligentes**: Usa `sleep` para alta precisión (≤3min) o `cron` para duraciones largas
-- 🎛️ **Umbral configurable**: Personaliza cuándo usar `sleep` vs `cron` con `--tempo-threshold`
+- ⚡ **Temporizadores inteligentes**: 
+  - **Versión cron**: Usa `sleep` para alta precisión (≤3min) o `cron` para duraciones largas
+  - **Versión systemd**: Usa `sleep` para alta precisión (≤3min) o `systemd timers` para duraciones largas (precisión de segundos)
+- 🎛️ **Umbral configurable**: Personaliza cuándo usar `sleep` vs scheduling system con `--tempo-threshold`
 - 📅 **Alarmas programadas**: Configura alarmas recurrentes para días específicos
 - 🔇 **Modo silencioso**: Opción para desactivar el sonido
 - 📋 **Gestión completa**: Lista, elimina y borra todas las alarmas
 - 🔔 **Notificaciones**: Notificaciones de escritorio automáticas
-- 🎵 **Alertas de sonido**: Múltiples formatos de audio soportados
+- 🎵 **Alertas de sonido**: Múltiples formatos de audio soportados (PipeWire, PulseAudio, ALSA)
+- 🔄 **Instalación inteligente**: Detecta automáticamente si usar cron o systemd
 
 ## Dependencias
 
 ### Requisitos del sistema
+
+**Para versión cron (alarm.sh):**
 - **Bash**: Shell compatible (viene preinstalado en la mayoría de distribuciones Linux)
 - **cron**: Para programar alarmas (generalmente preinstalado)
 - **notify-send**: Para notificaciones de escritorio
-- **Audio system**: PulseAudio o ALSA para reproducir sonidos
+- **Audio system**: PipeWire, PulseAudio o ALSA para reproducir sonidos
+
+**Para versión systemd (alarm-v2.sh):**
+- **Bash**: Shell compatible
+- **systemd**: Para gestionar timers (preinstalado en sistemas modernos)
+- **notify-send**: Para notificaciones de escritorio
+- **Audio system**: PipeWire, PulseAudio o ALSA para reproducir sonidos
+
+> **💡 Nota:** El instalador automático detecta qué sistema tienes disponible (cron, systemd o ambos) y selecciona la versión apropiada.
 
 ### Instalación de dependencias
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt update
-sudo apt install libnotify-bin pulseaudio-utils alsa-utils
+sudo apt install libnotify-bin pipewire-pulse alsa-utils
+# o para PulseAudio tradicional:
+# sudo apt install libnotify-bin pulseaudio-utils alsa-utils
 ```
 
 **Fedora/RHEL/CentOS:**
 ```bash
-sudo dnf install libnotify pulseaudio-utils alsa-utils
+sudo dnf install libnotify pipewire-pulseaudio alsa-utils
+# o para PulseAudio tradicional:
+# sudo dnf install libnotify pulseaudio-utils alsa-utils
 ```
 
 **Arch Linux:**
 ```bash
-sudo pacman -S libnotify pulseaudio alsa-utils
+sudo pacman -S libnotify pipewire-pulse alsa-utils
+# o para PulseAudio tradicional:
+# sudo pacman -S libnotify pulseaudio alsa-utils
 ```
+
+> **💡 Tip:** El instalador automático detecta tu sistema de audio (PipeWire o PulseAudio) e instala las dependencias correctas.
 
 ## Instalación
 
@@ -67,8 +90,11 @@ cd alarm.sh
 
 El script de instalación automáticamente:
 - ✅ Detecta tu distribución Linux (Ubuntu, Debian, Fedora, Arch, etc.)
-- ✅ Instala todas las dependencias necesarias
-- ✅ Configura y verifica el servicio cron
+- ✅ Detecta si tienes cron, systemd o ambos
+- ✅ Selecciona la versión apropiada (alarm.sh para cron o alarm-v2.sh para systemd)
+- ✅ Detecta tu sistema de audio (PipeWire, PulseAudio o ALSA)
+- ✅ Instala todas las dependencias necesarias según tu sistema
+- ✅ Configura y verifica el servicio correspondiente (cron o systemd)
 - ✅ Hace el script ejecutable
 - ✅ Opcionalmente instala el comando globalmente
 - ✅ Verifica que todo funcione correctamente
@@ -94,11 +120,26 @@ chmod +x alarm.sh
 ```
 
 4. **Opcionalmente, instala globalmente:**
+
+Para la versión con systemd:
+```bash
+sudo cp alarm-v2.sh /usr/local/bin/alarm
+```
+
+Para la versión con cron:
 ```bash
 sudo cp alarm.sh /usr/local/bin/alarm
 ```
 
-5. **Verifica que cron esté ejecutándose:**
+5. **Verifica que el servicio esté ejecutándose:**
+
+Para systemd:
+```bash
+systemctl status systemd-logind  # Verifica que systemd esté activo
+systemctl --user list-timers     # Lista los timers del usuario
+```
+
+Para cron:
 ```bash
 sudo systemctl status cron
 # o en sistemas con systemd:
@@ -106,6 +147,8 @@ sudo systemctl status cronie
 ```
 
 ## Uso
+
+> **Nota:** `alarm.sh` (cron) y `alarm-v2.sh` (systemd) tienen la misma interfaz de comandos. Simplemente usa el script que instaló el instalador.
 
 ### Sintaxis básica
 
@@ -141,7 +184,7 @@ alarm 16:45 -m "Fin del día laboral" --no-sound
 
 #### Temporizadores
 ```bash
-# Temporizador de 5 minutos (usa cron por defecto, >3min)
+# Temporizador de 5 minutos
 alarm --tempo 05:00
 
 # Temporizador de 25 minutos para técnica Pomodoro
@@ -153,8 +196,9 @@ alarm --tempo 02:00 -m "Timer rápido"
 # Forzar uso de sleep para temporizador de 5 minutos
 alarm --tempo 05:00 --tempo-threshold 600 -m "Sleep hasta 10 minutos"
 
-# Forzar uso de cron para temporizador de 1 minuto
-alarm --tempo 01:00 --tempo-threshold 30 -m "Cron para >30 segundos"
+# Forzar uso del backend para temporizador de 1 minuto
+# (cron en alarm.sh, systemd en alarm-v2.sh)
+alarm --tempo 01:00 --tempo-threshold 30 -m "Backend para >30 segundos"
 
 # Temporizador silencioso de 1 hora y 30 minutos
 alarm --tempo 90:00 -m "Reunión terminada" --no-sound
@@ -203,7 +247,7 @@ alarm --clear-all
 | `-m, --message` | Mensaje personalizado para la alarma |
 | `--no-sound` | Desactiva el sonido de la alarma |
 | `--tempo` | Modo temporizador (MM:SS) |
-| `--tempo-threshold SEGUNDOS` | Umbral para usar `sleep` vs `cron` (por defecto: 180 segundos/3 minutos) |
+| `--tempo-threshold SEGUNDOS` | Umbral para usar `sleep` vs backend (por defecto: 180 segundos/3 minutos) |
 | `--schedule` | Programa alarma recurrente |
 | `--days` | Especifica días para alarmas programadas |
 | `--list` | Lista todas las alarmas configuradas |
@@ -230,10 +274,11 @@ El sistema utiliza dos métodos diferentes para manejar temporizadores según su
 - **Ventajas**: Precisión al segundo, ejecución instantánea
 - **Limitación**: El proceso debe mantenerse en ejecución
 
-### ⏰ **Cron (Persistente)**
+### ⏰ **Backend Persistente (Cron o Systemd)**
 - **Cuándo**: Para temporizadores > umbral
 - **Ventajas**: Persiste aunque cierres la terminal, manejo de temporizadores largos
-- **Limitación**: Precisión al minuto (los segundos se redondean)
+- **alarm.sh (cron)**: Precisión al minuto (los segundos se redondean)
+- **alarm-v2.sh (systemd)**: Precisión al segundo
 
 ### ⚙️ **Configuración del Umbral**
 
@@ -246,8 +291,21 @@ alarm --tempo 05:00 --tempo-threshold 600
 
 # Valor por defecto (180 segundos = 3 minutos)
 alarm --tempo 02:30  # Usa sleep (≤3min)
-alarm --tempo 05:00  # Usa cron (>3min)
+alarm --tempo 05:00  # Usa backend persistente (>3min)
 ```
+
+## Comparación de Versiones
+
+| Característica | alarm.sh (cron) | alarm-v2.sh (systemd) |
+|----------------|-----------------|----------------------|
+| **Backend** | cron service | systemd timers |
+| **Precisión alarmas** | Minuto | Segundo |
+| **Precisión temporizadores** | Minuto (>umbral) | Segundo |
+| **Persistencia** | ✅ Sí | ✅ Sí |
+| **Requisitos** | cron instalado | systemd instalado |
+| **Compatibilidad** | Todos los Unix | Linux moderno |
+| **Gestión** | crontab -l | systemctl --user list-timers |
+| **Logs** | /var/log/syslog | journalctl --user |
 
 ## Solución de problemas
 
@@ -256,19 +314,44 @@ alarm --tempo 05:00  # Usa cron (>3min)
 - Asegúrate de que tu entorno de escritorio soporte notificaciones
 
 ### No se reproduce sonido
-- Verifica que PulseAudio o ALSA estén funcionando
+- Verifica que tu sistema de audio esté funcionando (PipeWire, PulseAudio o ALSA)
 - Comprueba que existan archivos de sonido en las rutas especificadas
-- Prueba reproducir sonido manualmente: `paplay /usr/share/sounds/alsa/Front_Left.wav`
+- Prueba reproducir sonido manualmente:
+  - PipeWire: `pw-play /usr/share/sounds/alsa/Front_Left.wav`
+  - PulseAudio: `paplay /usr/share/sounds/alsa/Front_Left.wav`
+  - ALSA: `aplay /usr/share/sounds/alsa/Front_Left.wav`
+
+### Las alarmas no se ejecutan (alarm.sh con cron)
+- Verifica que el servicio cron esté ejecutándose: `sudo systemctl status cron` o `sudo systemctl status cronie`
+- Comprueba tu crontab: `crontab -l`
+- Revisa los logs del sistema: `grep CRON /var/log/syslog`
+
+### Las alarmas no se ejecutan (alarm-v2.sh con systemd)
+- Verifica tus timers de usuario: `systemctl --user list-timers`
+- Comprueba el estado de un timer específico: `systemctl --user status alarm-ID.timer`
+- Revisa los logs: `journalctl --user -u alarm-ID.service`
+- Verifica que systemd user timers estén habilitados: `loginctl show-user $USER`
 
 ### Las alarmas programadas no funcionan
+
+**Para alarm.sh (cron):**
 - Verifica que cron esté ejecutándose: `sudo systemctl status cron`
 - Comprueba que el script tenga permisos de ejecución
 - Revisa los logs de cron: `sudo tail -f /var/log/cron`
+- Verifica tu zona horaria: `date`
+- Asegúrate de que el formato de hora sea correcto (HH:MM en formato 24 horas)
+
+**Para alarm-v2.sh (systemd):**
+- Lista tus timers activos: `systemctl --user list-timers --all`
+- Verifica el calendario del timer: `systemctl --user cat alarm-ID.timer`
+- Prueba manualmente el servicio: `systemctl --user start alarm-ID.service`
+- Revisa que los días especificados sean válidos
 
 ## Limitaciones
 
 - Requiere que el sistema esté encendido para que las alarmas funcionen
-- Las alarmas programadas dependen del servicio cron
+- **alarm.sh**: Las alarmas programadas dependen del servicio cron (precisión de minuto)
+- **alarm-v2.sh**: Las alarmas programadas dependen de systemd timers (precisión de segundo)
 - Las notificaciones requieren un entorno de escritorio activo
 
 ## Contribuciones
